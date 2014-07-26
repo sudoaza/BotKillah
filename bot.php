@@ -12,6 +12,8 @@ function get_random_bot() {
 function get_friends ( $screen_name ) {
     global $cb;
 
+    if ( !$screen_name ) return false;
+
     $nextCursor = "-1";
     $i = 0;
 
@@ -50,6 +52,8 @@ function get_friends ( $screen_name ) {
 
 function get_followers ( $screen_name ) {
     global $cb;
+
+    if ( !$screen_name ) return false;
 
     $nextCursor = "-1";        
     $i = 0;
@@ -111,4 +115,45 @@ function mark_as_viewed($id_str) {
     // lo marco como visto para no volver a usarlo
     $actualizado = "UPDATE usuario SET visto = 1 WHERE id_str = '$id_str'";  
     $db->sql_query($actualizado);
+}
+
+function save_tweet($t) {
+    global $db;
+
+    $guarda = "INSERT INTO tweet (id_str, usuario_id_str, text, created_at) "
+            . "VALUES ('{$t->id_str}','{$t->user->id_str}', '$t->text', '$t->created_at')";
+    $db->sql_query($guarda);
+}
+
+function get_and_save_tweets($screen_name) {
+    global $cb,$traer_rts;
+
+    if ( !$screen_name ) return false;
+
+    $max_id = false;
+    $i = 0;
+
+    $parameters = array(
+        'count' =>200,
+        'screen_name'=> $screen_name,
+        'include_rts'=> $traer_rts
+    );
+
+    while ( !$result->error ) {
+        $i++;
+
+        if ( $max_id ) $params['max_id'] = $max_id;
+
+        $result = $cb->statuses_userTimeline($parameters);
+        
+        handle_errors($result);
+
+        foreach ( $result as $tweet ) {
+          save_tweet($tweet);
+          $max_id = $tweet->id_str;
+        }
+
+        if ( $i > 10 ) { break; }
+    }
+
 }

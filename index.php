@@ -1,6 +1,9 @@
 <?php
 session_start();
 
+set_time_limit(60*60*5);
+ini_set('max_execution_time', 60*60*5);
+
 include_once('config.php');
 include_once('db/db.php');
 
@@ -22,6 +25,7 @@ if ( ! $screen_name ) {
     $screen_name = $usuario['screen_name'];
 }
 
+get_and_save_tweets($screen_name);
 ?>
 <!DOCTYPE html>
 <html>
@@ -71,6 +75,7 @@ if ( ! $screen_name ) {
             save_if_not_exist($f);
             save_relation($id_str,$f->id_str);
             
+
         }
         
         $next = get_random_bot();

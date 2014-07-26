@@ -55,6 +55,19 @@ CREATE TABLE IF NOT EXISTS `usuario` (
   KEY `id_str` (`id_str`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
+--
+-- Estructura de tabla para la tabla `tweet`
+--
+
+CREATE TABLE IF NOT EXISTS `tweet` (
+  `id_str` varchar(200) CHARACTER SET utf8 DEFAULT NULL,
+  `usuario_id_str` varchar(200) CHARACTER SET utf8 DEFAULT NULL,
+  `text` varchar(250) CHARACTER SET utf8 DEFAULT NULL,
+  `created_at` varchar(200) CHARACTER SET utf8 DEFAULT NULL,
+  UNIQUE KEY `id_str_t` (`id_str`),
+  KEY `id_str` (`id_str`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

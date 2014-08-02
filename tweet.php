@@ -25,39 +25,6 @@ class Tweet {
       $db->sql_query($guarda);
   }
 
-  function get_and_save_tweets($screen_name) {
-      global $cb;
-
-      if ( !$screen_name ) return false;
-
-      $max_id = get_max_id($screen_name);
-      $i = 0;
-
-      $parameters = array(
-          'count' =>200,
-          'screen_name'=> $screen_name,
-          'include_rts'=> TRAER_RTS
-      );
-
-      while ( !$result->error ) {
-          $i++;
-
-          if ( $max_id ) $params['max_id'] = $max_id;
-
-          $result = $cb->statuses_userTimeline($parameters);
-          
-          handle_errors($result);
-
-          foreach ( $result as $tweet ) {
-            Tweet::save_tweet($tweet);
-            $max_id = $tweet->id_str;
-          }
-
-          if ( $i > TWEETS_POR_BOT ) { break; }
-      }
-
-  }
-
   function get_tweets_by_piece($piece) {
       global $db;
       $piece = mysql_real_escape_string($piece);

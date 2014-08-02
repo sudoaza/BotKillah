@@ -8,6 +8,8 @@ if ( ! $id_str ) {
     $id_str = $usuario->id_str;
 }
 
+$usuario = new Bot($id_str);
+
 $usuario->get_data_if_not_done_yet();
 $usuario->get_and_save_tweets();
 $usuario->get_and_save_contacts();

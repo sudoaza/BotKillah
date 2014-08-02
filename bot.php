@@ -6,8 +6,9 @@ class Bots {
     global $db;
     // entrada por default, comienza el spider buscando uno que esté disponible
     $siguiente = "SELECT * FROM `usuario` WHERE visto = 0 and esbot =1  and excluir = 0 limit 0,1";  
-    $resultadosig = $db->sql_query($siguiente);        
-    return $db->sql_fetchrow($resultadosig);
+    $resultadosig = $db->sql_query($siguiente);
+    $row = $db->sql_fetchrow($resultadosig);
+    return $row ? new Bot($row) : null; 
   }
 
   function get_by_id_str($id_str) {
@@ -22,17 +23,65 @@ class Bots {
 }
 
 class Bot {
+
+  public $id_str, $name, $screen_name, $location, $description, $followers_count, $friends_count, $created_at, $statuses_count, $lang;
+  private $contacts = false;
+
 /**
   Params puede ser un objeto con los datos o un id_str
 */
-  function __construct($params) {
+  function __construct($params = null) {
     global $cb, $db;
     $this->cb = $cb;
     $this->db = $db;
+    if ( $params ) {
+      if ( is_numeric($params) ) {
+        $this->id_str = $params;
+        $this->load();
+      } else {
+        $this->load($params);
+      }
+    }
+  }
+
+  function load($params = null) {
+    if ($params && $params instanceof stdClass) $params = (Array) $params;
+
+    if ($params && !$this->id_str) $this->id_str = $params['id_str'];
+
+    if (!$params) {
+      $siguiente = "SELECT * FROM `usuario` WHERE id_str = '{$this->id_str}' limit 0,1";
+      $resultadosig = $this->db->sql_query($siguiente);
+      $params = $this->db->sql_fetchrow($resultadosig);
+    }
+
+    if (is_array($params)) {
+      $this->name = $params['name'] ? $params['name'] : $this->name;
+      $this->screen_name = $params['screen_name'] ? $params['screen_name'] : $this->screen_name;
+      $this->location = $params['location'] ? $params['location'] : $this->location;
+      $this->description = $params['description'] ? $params['description'] : $this->description;
+      $this->followers_count = $params['followers_count'] ? $params['followers_count'] : $this->followers_count;
+      $this->friends_count = $params['friends_count'] ? $params['friends_count'] : $this->friends_count;
+      $this->created_at = $params['created_at'] ? $params['created_at'] : $this->created_at;
+      $this->statuses_count = $params['statuses_count'] ? $params['statuses_count'] : $this->statuses_count;
+      $this->lang = $params['lang'] ? $params['lang'] : $this->lang;
+    } else {
+      // fail
+    }
   }
 
 
   function get_contacts() {
+    if ( ! $this->contacts ) {
+      $sql = "SELECT DISTINCT u.* FROM usuario u JOIN relacion r ON (u.id_str = r.id_str_inicio OR u.id_str = r.id_str_destino) WHERE r.id_str_inicio = {$this->id_str} OR r.id_str_destino = {$this->id_str};";
+      $resultadosig = $this->db->sql_query($sql);
+      $contacts = Array();
+      while ( $row = $this->db->sql_fetchrow($resultadosig) ) {
+        $contacts[] = new Bot($row);
+      }
+      $this->contacts = $contacts;
+    }
+    return $this->contacts;
   }
 
 
@@ -61,14 +110,19 @@ class Bot {
     }
   }
 
-  function get_and_save_tweets() {
-    Tweet::get_and_save_tweets($this->screen_name);
-  }
-
   function get_data_if_not_done_yet() {
     if ( ! isset($this->screen_name) ) {
       $this->get_and_save_data();
     }
+  }
+
+  function get_and_save_data() {
+    $parameters = array(
+      'user_id'=> $this->id_str
+    );
+
+    $result = $this->cb->users_show($parameters);
+    $this->load($result);
   }
 
   function get_friends() {
@@ -197,10 +251,18 @@ class Bot {
     return $followers;
   }
 
-  function save_if_not_exist() {
-    $guarda = "INSERT INTO usuario (id_str, name, screen_name, location, description, followers_count, friends_count, created_at, statuses_count, lang) "
-            . "VALUES ('$this->id_str','$this->name', '$this->screen_name', '$this->location', '$this->description', "
-            . "'$this->followers_count', '$this->friends_count', '$this->created_at', '$this->statuses_count', '$this->lang' )";
+  function save() {
+    $existe = Bots::get_by_id_str($this->id_str);
+    if ( $existe ) {
+      $guarda = 'UPDATE usuario SET (';
+    } else {
+      $guarda = 'INSERT INTO usuario (';
+    }
+
+    $guarda .= "id_str, name, screen_name, location, description, followers_count, friends_count, created_at, statuses_count, lang)"
+            . " VALUES ('$this->id_str','$this->name', '$this->screen_name', '$this->location', '$this->description', "
+            . "'$this->followers_count', '$this->friends_count', '$this->created_at', '$this->statuses_count', '$this->lang')";
+
     $this->db->sql_query($guarda);
   }
 
@@ -215,6 +277,37 @@ class Bot {
     $this->db->sql_query($actualizado);
   }
 
+  function get_and_save_tweets() {
+      $max_id = $this->get_max_tweet_id();
+      $i = 0;
+
+      $parameters = array(
+          'count' =>200,
+          'user_id'=> $this->id_str,
+          'include_rts'=> TRAER_RTS
+      );
+
+      do {
+          $i++;
+
+          if ( $max_id ) $parameters['max_id'] = $max_id;
+
+          $result = $this->cb->statuses_userTimeline($parameters);
+          
+          handle_errors($result);
+
+          foreach ( $result as $tweet ) {
+            if ( isset($tweet->id_str) && isset($tweet->text) ) {
+              Tweet::save_tweet($tweet);
+              $max_id = $tweet->id_str;
+            }
+          }
+
+          if ( $i > TWEETS_POR_BOT ) { break; }
+      } while (!isset($result->errors));
+  }
+
+
   // El max id del request no el id mas grande, ya se, weird...
   function get_max_tweet_id() {
     $sql = "SELECT id_str FROM tweet WHERE id_str = '{$this->id_str}' ORDER BY id_str ASC LIMIT 0,1";
@@ -226,7 +319,7 @@ class Bot {
 }
 
 function handle_errors($result) {
-    if ($result->errors) {
+    if (isset($result->errors)) {
         echo '<div class="alert alert-warning"><strong>Error!</strong> '.$result->errors[0]->message."</div><br />";
     }
 }

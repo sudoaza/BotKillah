@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS `tweet` (
   `id_str` varchar(200) CHARACTER SET utf8 DEFAULT NULL,
   `usuario_id_str` varchar(200) CHARACTER SET utf8 DEFAULT NULL,
   `text` varchar(250) CHARACTER SET utf8 DEFAULT NULL,
+  `visto` int(11) NOT NULL DEFAULT '0',
   `created_at` varchar(200) CHARACTER SET utf8 DEFAULT NULL,
   UNIQUE KEY `id_str_t` (`id_str`),
   KEY `id_str` (`id_str`)

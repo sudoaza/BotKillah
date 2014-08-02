@@ -51,16 +51,15 @@ $usuario->get_and_save_contacts();
  <?php
         $usuario->mark_as_viewed();
 
-        foreach ( $usuario->get_contacts() as $f ) {
-            echo  '<a href="http://twitter.com/'.$f->screen_name.'" target="_blank" >'.$f->screen_name.'</a> <a href="?id_str='.$f->id_str.'&amp;screen_name='.$f->screen_name.'"><i class="icon-chevron-sign-right"></i></a><br />';
-        }
+        foreach ( $usuario->get_contacts() as $f ) { ?>
+            <a href="http://twitter.com/<?= $f->screen_name ?>" target="_blank" ><?= $f->screen_name ? $f->screen_name : $f->id_str ?></a> <a href="?id_str=<?= $f->id_str ?>"><i class="icon-chevron-sign-right"></i></a><br />
+<?php    }
 
         $next = Bots::get_random_bot();
         ?>
         <form action="index.php" method="GET">
 
             <input id="id_str" type="hidden" name="id_str" value="<?= $next->id_str ?>">
-            <input id="screen_name" type="hidden" name="screen_name" value="<?= $next->screen_name ?>">
 
             <input id="next" type="submit" value="Siguiente: <?= $next->screen_name ? $next->screen_name : 'NONE' ?>">
 
